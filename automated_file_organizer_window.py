@@ -1,13 +1,7 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel
 
-
 import sys
-
-from utils import open_folder
-
-
-
 
 
 class AutomatedFileOrganizerWindow(QWidget):
@@ -49,7 +43,7 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.add_folder_button.setObjectName("add_folder_button")
         self.add_folder_button.setText("Add Folder")
         self.folder_selector_button_layout.addWidget(self.add_folder_button)
-        self.add_folder_button.clicked.connect(open_folder)
+        #self.add_folder_button.clicked.connect(open_folder)
 
         # Create the "Delete Folder" button
         self.delete_folder_button = QtWidgets.QPushButton(self.main_container)
