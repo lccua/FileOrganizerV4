@@ -1,12 +1,12 @@
 # third party imports
-import shutil
-
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
 # system imports
 import os
+import json
+import shutil
 
 
 file_categories = {
@@ -305,3 +305,38 @@ def organize_chosen_files(treeWidget, remove_duplicates_checkbox):
     categorize_files(treeWidget)  # Re-categorize the files
 
 
+
+# JSON
+def save_selected_folders():
+    print("test123")
+    # Save the list of selected folder paths to a JSON file
+    with open("selected_folders.json", "w") as json_file:
+        json.dump(selected_folder_paths, json_file)
+
+
+def load_selected_folders(listWidget):
+    print("test123")
+    global selected_folder_paths
+    # Check if the JSON file with selected folders exists
+    if os.path.exists("selected_folders.json"):
+        with open("selected_folders.json", "r") as json_file:
+            selected_folder_paths = json.load(json_file)
+            update_list_widget(listWidget)  # Update the list widget with the loaded folder paths
+
+
+def load_checked_items(treeWidget):
+    print("test123")
+    global checked_items
+    # Check if the JSON file with checked item state exists
+
+    if os.path.exists("checked_items.json"):
+        with open("checked_items.json", "r") as json_file:
+            checked_items = json.load(json_file)
+            check_saved_items(treeWidget)
+
+
+def save_checked_items(treeWidget):
+    print("test123")
+    categorize_checked_items(treeWidget)
+    with open("checked_items.json", "w") as json_file:
+        json.dump(checked_items, json_file)

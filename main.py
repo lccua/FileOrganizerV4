@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QApplication
 from main_window import MainWindow
 
 def main():
+    print("hi")
     app = QApplication(sys.argv)
     main_window = MainWindow()
     main_window.show()

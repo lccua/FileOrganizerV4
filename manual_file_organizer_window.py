@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel
 import sys
 
 # local imports
-from utils import open_and_select_folder, toggle_select_all, delete_selected_folder, organize_chosen_files
+from utils import open_and_select_folder, toggle_select_all, delete_selected_folder, organize_chosen_files, save_selected_folders, save_checked_items, load_checked_items, load_selected_folders, categorize_files
 
 class ManualFileOrganizerWindow(QWidget):
     def __init__(self):
@@ -14,6 +14,8 @@ class ManualFileOrganizerWindow(QWidget):
         self.init_ui()
 
     def init_ui(self):
+
+
 
         # Set the window title
         self.setWindowTitle('First Window')
@@ -94,11 +96,18 @@ class ManualFileOrganizerWindow(QWidget):
         self.folder_selector_list.setObjectName("folder_selector_list")
         self.main_grid_layout.addWidget(self.folder_selector_list, 0, 0, 1, 1)
 
+        load_selected_folders(self.folder_selector_list)
+
+
         # Create a tree widget for displaying data
         self.file_overview_tree = QtWidgets.QTreeWidget(self.horizontalLayoutWidget_3)
         self.file_overview_tree.setObjectName("file_overview_tree")
         self.file_overview_tree.setHeaderHidden(True)
         self.main_grid_layout.addWidget(self.file_overview_tree, 0, 1, 1, 1)
+
+        categorize_files(self.file_overview_tree)
+
+        load_checked_items(self.file_overview_tree)
 
         self.add_folder_button.clicked.connect(lambda: open_and_select_folder(self.folder_selector_list, self.file_overview_tree))
 
@@ -177,12 +186,16 @@ class ManualFileOrganizerWindow(QWidget):
         self.remove_duplicates_checkbox.setObjectName("remove_duplicates_checkbox")
         self.remove_duplicates_checkbox.setText("Remove Duplicates")
 
-def main():
-    app = QtWidgets.QApplication(sys.argv)
-    window = ManualFileOrganizerWindow()
-    window.show()
-    sys.exit(app.exec_())
+    def closeEvent(self, event):
+        # This method is called when the window is closed
+        save_selected_folders()
+        save_checked_items(self.file_overview_tree)
+        event.accept()
 
 
-if __name__ == "__main__":
-    main()
+
+
+
+
+
+

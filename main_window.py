@@ -33,11 +33,5 @@ class MainWindow(QMainWindow):
         self.manual_organizer.show()
         self.close()  # Close the main window
 
-def main():
-    app = QApplication(sys.argv)
-    main_window = MainWindow()
-    main_window.show()
-    sys.exit(app.exec_())
 
-if __name__ == "__main__":
-    main()
+
