@@ -7,7 +7,7 @@ import sys
 
 # local imports
 import utils
-from utils import open_and_select_folder, toggle_select_all, delete_selected_folder, remove_items_from_nested_dict, select_item_in_tree, categorized_files, exclude_files
+from utils import open_and_select_folder, toggle_select_all, delete_selected_folder, remove_items_from_nested_dict, select_item_in_tree, categorized_files, exclude_files, include_files
 
 
 class AutomatedFileOrganizerWindow(QWidget):
@@ -87,6 +87,8 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.include_item_button.setObjectName("include_item_button")
         self.include_item_button.setText("Include Item")
 
+        self.include_item_button.clicked.connect(lambda: include_files(self.file_overview_tree, self.excluded_items_tree))
+
 
         self.excluded_items_button_layout.addWidget(self.include_item_button)
 
@@ -117,7 +119,7 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.exclude_item_button.setObjectName("exclude_item_button")
         self.exclude_item_button.setText("Exclude Item(s)")
 
-        self.exclude_item_button.clicked.connect(lambda: exclude_files(self.file_overview_tree, self.excluded_items_tree ))
+        self.exclude_item_button.clicked.connect(lambda: exclude_files(self.file_overview_tree, self.excluded_items_tree))
 
         self.file_overview_button_layout.addWidget(self.exclude_item_button)
 
