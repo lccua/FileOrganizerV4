@@ -33,10 +33,14 @@ file_categories = {
 
 checked_items = {}
 categorized_files = {}
+excluded_files = {}
+
 checkboxes = {}
 
 selected_folder_paths = []
 selected_days = []
+
+is_automated = None
 
 
 
@@ -101,8 +105,10 @@ def categorize_files(treeWidget):
     # After categorization is complete, you may want to call additional functions
     categorize_checked_items(treeWidget)
     treeWidget.clear()
-    # Populate the tree widget with the categorized files and folders stored in the categorized_files dictionary
+
+        # Populate the tree widget with the categorized files and folders stored in the categorized_files dictionary
     populate_tree(treeWidget, categorized_files)
+
     check_saved_items(treeWidget)
 
 def categorize_checked_items(treeWidget):
@@ -173,12 +179,13 @@ def populate_tree(treeWidget, categorized_files_dictionary, parent=None):
             # '0' sets the item to the first and only column in the treeview
             tree_view_item.setText(0, category_or_extension_name)
 
-        # Adds a ItemIsTristate (checked, unchecked, partially checked item aka checkbox)
-        # Adds a ItemIsUserCheckable (the user can set the state off the item (checkbox))
-        tree_view_item.setFlags(tree_view_item.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
+        if is_automated == False:
+            # Adds a ItemIsTristate (checked, unchecked, partially checked item aka checkbox)
+            # Adds a ItemIsUserCheckable (the user can set the state off the item (checkbox))
+            tree_view_item.setFlags(tree_view_item.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
 
-        # Add the item to the tree_view
-        treeWidget.addTopLevelItem(tree_view_item)
+            # Add the item to the tree_view
+            treeWidget.addTopLevelItem(tree_view_item)
 
         # returns True if the variable values is an instance of the dict type (i.e., if values is a dictionary).
         if isinstance(values, dict):
@@ -198,14 +205,15 @@ def populate_tree(treeWidget, categorized_files_dictionary, parent=None):
                 # Create a new child item under the current item
                 child = QtWidgets.QTreeWidgetItem(tree_view_item)
 
+
                 # Set the text of the child item to the filename
                 child.setText(0, filename)
 
-                # Add special attributes for user interaction to the child item
-                child.setFlags(child.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsTristate)
-
-                # Set the initial check state of the child item to unchecked
-                child.setCheckState(0, Qt.Unchecked)
+                if is_automated == False:
+                    # Add special attributes for user interaction to the child item
+                    child.setFlags(child.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsTristate)
+                    # Set the initial check state of the child item to unchecked
+                    child.setCheckState(0, Qt.Unchecked)
 
     # After populating the tree with categorized_files, sort the items alphabetically
     treeWidget.sortItems(0, Qt.AscendingOrder)
@@ -306,6 +314,8 @@ def organize_chosen_files(treeWidget, remove_duplicates_checkbox):
 
 
 
+
+
 # JSON
 def save_selected_folders():
     print("test123")
@@ -340,3 +350,232 @@ def save_checked_items(treeWidget):
     categorize_checked_items(treeWidget)
     with open("checked_items.json", "w") as json_file:
         json.dump(checked_items, json_file)
+
+
+def remove_items_from_nested_dict(treeWidgetFileOverview, treeWidgetExcludedItems):
+    all_checked = True
+    for folder_path, folders in categorized_files.items():
+
+        items = treeWidgetFileOverview.findItems("", QtCore.Qt.MatchContains | QtCore.Qt.MatchRecursive)
+
+        # There is only a need to check the lower level tree view items (depth 3) because if you check one of them, the upper level tree view items get checked automatically
+        for item in items:
+
+            if item.checkState(0) == QtCore.Qt.Checked:
+                item_depth = get_item_depth(item)
+
+                if item_depth == 0:  # folder path
+                    item_to_remove = item.text(0)
+                    top_level_name = item.text(0)
+
+                if item_depth == 1:  # category
+                    item_to_remove = item.text(0)
+                    top_level_name = item.parent().text(0)
+
+                if item_depth == 2:  # file type
+                    item_to_remove = item.text(0)
+                    category_item = item.parent()
+                    top_level_name = category_item.parent().text(0)
+
+                if item_depth == 3:  # file
+                    item_to_remove = item.text(0)
+                    file_type_item = item.parent()
+                    category_item = file_type_item.parent()
+                    top_level_name = category_item.parent().text(0)
+
+                if top_level_name == folder_path:
+
+                    for folder_path, folders in categorized_files.items():
+                        if item_to_remove in folders:
+                            del folders[item_to_remove]
+                            break
+                        for category, categories in folders.items():
+                            if item_to_remove in categories:
+                                del categories[item_to_remove]
+                                break
+                            for file_type, file_types in categories.items():
+                                if item_to_remove in file_types:
+                                    file_types.remove(item_to_remove)
+                                    break
+            else:
+                # If at least one item is not checked, set the flag to False
+                all_checked = False
+
+    # Check if all checkboxes were selected
+    if all_checked:
+        categorize_checked_items(treeWidgetFileOverview)
+        treeWidgetFileOverview.clear()
+
+    else:
+
+        populate_tree(treeWidgetFileOverview, categorized_files)
+
+
+    treeWidgetExcludedItems.clear()
+    populate_tree(treeWidgetExcludedItems, checked_items)
+
+
+def select_item_in_tree(file_overview_tree):
+    selected_items = file_overview_tree.selectedItems()
+    current_level = checked_items
+
+    for item in selected_items:
+        print(item.text(0))
+
+    for tree_item in selected_items:
+        depth = get_item_depth(tree_item)
+
+        if depth == 0:
+            folder_path = tree_item.text(0)
+            current_level[folder_path] = {}
+        elif depth == 1:
+            category = tree_item.text(0)
+            current_level[folder_path][category] = {}
+        elif depth == 2:
+            file_type = tree_item.text(0)
+            current_level[folder_path][category][file_type] = []
+        elif depth == 3:
+            file = tree_item.text(0)
+            current_level[folder_path][category][file_type].append(file)
+
+
+def find_top_level_parent(item):
+    parent = item.parent()
+    while parent is not None:
+        item = parent
+        parent = item.parent()
+    return item
+
+
+def get_selected_item(treeWidget):
+    selected_items = treeWidget.selectedItems()
+    if selected_items:
+        print(selected_items[0].text)
+        top_level_parent = find_top_level_parent(selected_items[0])
+        return top_level_parent  # Assuming you want the first selected item
+    else:
+        return None
+
+
+def exclude_files(treeWidgetFileOverview, treeWidgetExcludedItems):
+
+
+
+        global excluded_files
+
+
+
+        if categorized_files:  # Check if the dictionary is not empty
+            top_level_parent = get_selected_item(treeWidgetFileOverview)
+            top_level_parent_text = top_level_parent.text(0)
+
+            selected_item = treeWidgetFileOverview.selectedItems()[0]
+            selected_item_depth = get_item_depth(selected_item)
+
+            if selected_item_depth == 1:  # category
+                category = selected_item
+                folder = category.parent()
+
+                category_text = category.text(0)
+                folder_text = folder.text(0)
+
+                # Ensure the dictionaries are initialized
+                if folder_text not in excluded_files:
+                    excluded_files[folder_text] = {}
+
+                # Move the category to excluded_files
+                category_to_move = categorized_files[folder_text].pop(category_text)
+                excluded_files[folder_text][category_text] = category_to_move
+
+
+
+
+            elif selected_item_depth == 2:  # file type
+                file_type = selected_item
+                category = file_type.parent()
+                folder = category.parent()
+
+                file_type_text = file_type.text(0)
+                category_text = category.text(0)
+                folder_text = folder.text(0)
+
+                # Ensure the dictionaries are initialized
+                if folder_text not in excluded_files:
+                    excluded_files[folder_text] = {}
+                if category_text not in excluded_files[folder_text]:
+                    excluded_files[folder_text][category_text] = {}
+
+                # Move the file type to excluded_files
+                file_type_to_move = categorized_files[folder_text][category_text].pop(file_type_text)
+                excluded_files[folder_text][category_text][file_type_text] = file_type_to_move
+
+            elif selected_item_depth == 3:
+                file = selected_item
+                file_type = file.parent()
+                category = file_type.parent()
+                folder = category.parent()
+
+
+
+                file_text = file_type.text(0)
+                file_type_text = file_type.text(0)
+                category_text = category.text(0)
+                folder_text = folder.text(0)
+
+                # Make sure that the dictionaries are initialized
+                if folder_text not in excluded_files:
+                    excluded_files[folder_text] = {}
+
+                if category_text not in excluded_files[folder_text]:
+                    excluded_files[folder_text][category_text] = {}
+
+                if file_type_text not in excluded_files[folder_text][category_text]:
+                    excluded_files[folder_text][category_text][file_type_text] = []
+
+
+
+                # Pop the item from categorized_files and append it to excluded_files
+                item_to_move = categorized_files[folder_text][category_text][file_type_text].pop()
+                excluded_files[folder_text][category_text][file_type_text].append(item_to_move)
+
+                if not categorized_files[folder_text][category_text][file_type_text]:
+                    del categorized_files[folder_text][category_text][file_type_text]
+
+                    if not categorized_files[folder_text][category_text]:
+                        del categorized_files[folder_text][category_text]
+
+                        if not categorized_files[folder_text]:
+                            del categorized_files[folder_text]
+
+
+            else:
+
+                folder = top_level_parent_text
+
+                # Move the parent item to a new dictionary
+                excluded_files = {folder: categorized_files[folder]}
+
+                # Delete the parent item from the original dictionary
+                del categorized_files[folder]
+
+
+            treeWidgetFileOverview.clear()
+            populate_tree(treeWidgetFileOverview, categorized_files)
+
+            treeWidgetExcludedItems.clear()
+            populate_tree(treeWidgetExcludedItems, excluded_files)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
