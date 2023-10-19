@@ -290,8 +290,9 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.checkBox_7.setText("Checkbox 7")
         self.days_checkboxes_layout.addWidget(self.checkBox_7)
 
-        self.file_overview_tree.itemSelectionChanged.connect(self.on_tree_item_selected)
+        #self.file_overview_tree.itemSelectionChanged.connect(self.on_tree_item_selected)
 
+'''
     def select_all_parents_and_children(self, item):
         # Select the item itself
         item.setSelected(True)
@@ -316,6 +317,7 @@ class AutomatedFileOrganizerWindow(QWidget):
             self.select_all_parents_and_children(selected_item)
 
             selected_item_text = selected_item.text(0)
+'''
 
 
 
