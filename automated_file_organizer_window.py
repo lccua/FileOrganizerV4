@@ -1,7 +1,13 @@
+# third party imports
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel
 
+# system imports
 import sys
+
+# local imports
+import utils
+from utils import open_and_select_folder, toggle_select_all, delete_selected_folder, remove_items_from_nested_dict, select_item_in_tree, categorized_files, exclude_files
 
 
 class AutomatedFileOrganizerWindow(QWidget):
@@ -10,6 +16,9 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.init_ui()
 
     def init_ui(self):
+
+        utils.is_automated = True
+
         # Set the window title
         self.setWindowTitle('First Window')
 
@@ -38,26 +47,29 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.folder_selector_button_layout.setSpacing(30)
         self.folder_selector_button_layout.setObjectName("folder_selector_button_layout")
 
+
         # Create the "Add Folder" button
         self.add_folder_button = QtWidgets.QPushButton(self.main_container)
         self.add_folder_button.setObjectName("add_folder_button")
         self.add_folder_button.setText("Add Folder")
         self.folder_selector_button_layout.addWidget(self.add_folder_button)
-        #self.add_folder_button.clicked.connect(open_folder)
+        self.add_folder_button.clicked.connect(lambda: open_and_select_folder(self.folder_selector_list, self.file_overview_tree))
 
         # Create the "Delete Folder" button
         self.delete_folder_button = QtWidgets.QPushButton(self.main_container)
         self.delete_folder_button.setObjectName("delete_folder_button")
         self.delete_folder_button.setText("Delete Folder")
+        self.delete_folder_button.clicked.connect(lambda: delete_selected_folder(self.folder_selector_list, self.file_overview_tree))
         self.folder_selector_button_layout.addWidget(self.delete_folder_button)
 
         # Add the folder selection button layout to the main grid layout
         self.main_grid_layout.addLayout(self.folder_selector_button_layout, 1, 0, 1, 1)
 
         # Create a ListWidget for excluded items
-        self.excluded_items_list = QtWidgets.QListWidget(self.main_container)
-        self.excluded_items_list.setObjectName("excluded_items_list")
-        self.main_grid_layout.addWidget(self.excluded_items_list, 0, 2, 1, 1)
+        self.excluded_items_tree = QtWidgets.QTreeWidget(self.main_container)
+        self.excluded_items_tree.setObjectName("excluded_items_tree")
+        self.excluded_items_tree.setHeaderHidden(True)
+        self.main_grid_layout.addWidget(self.excluded_items_tree, 0, 2, 1, 1)
 
         # Create a ListWidget for folder selection
         self.folder_selector_list = QtWidgets.QListWidget(self.main_container)
@@ -74,6 +86,8 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.include_item_button = QtWidgets.QPushButton(self.main_container)
         self.include_item_button.setObjectName("include_item_button")
         self.include_item_button.setText("Include Item")
+
+
         self.excluded_items_button_layout.addWidget(self.include_item_button)
 
         # Add the excluded items button layout to the main grid layout
@@ -82,7 +96,7 @@ class AutomatedFileOrganizerWindow(QWidget):
         # Create a TreeWidget for file overview
         self.file_overview_tree = QtWidgets.QTreeWidget(self.main_container)
         self.file_overview_tree.setObjectName("file_overview_tree")
-        self.file_overview_tree.headerItem().setText(0, None)
+        self.file_overview_tree.setHeaderHidden(True)
         self.main_grid_layout.addWidget(self.file_overview_tree, 0, 1, 1, 1)
 
         # Create a horizontal layout for file overview buttons
@@ -95,12 +109,16 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.select_all_button = QtWidgets.QPushButton(self.main_container)
         self.select_all_button.setObjectName("select_all_button")
         self.select_all_button.setText("Select All")
+        self.select_all_button.clicked.connect(lambda: toggle_select_all(self.select_all_button, self.file_overview_tree))
         self.file_overview_button_layout.addWidget(self.select_all_button)
 
         # Create the "Exclude Item" button
         self.exclude_item_button = QtWidgets.QPushButton(self.main_container)
         self.exclude_item_button.setObjectName("exclude_item_button")
-        self.exclude_item_button.setText("Exclude Item")
+        self.exclude_item_button.setText("Exclude Item(s)")
+
+        self.exclude_item_button.clicked.connect(lambda: exclude_files(self.file_overview_tree, self.excluded_items_tree ))
+
         self.file_overview_button_layout.addWidget(self.exclude_item_button)
 
         # Add the file overview button layout to the main grid layout
@@ -271,6 +289,33 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.checkBox_7.setObjectName("checkBox_7")
         self.checkBox_7.setText("Checkbox 7")
         self.days_checkboxes_layout.addWidget(self.checkBox_7)
+
+        self.file_overview_tree.itemSelectionChanged.connect(self.on_tree_item_selected)
+
+    def select_all_parents_and_children(self, item):
+        # Select the item itself
+        item.setSelected(True)
+
+        # Select all children recursively
+        for child_index in range(item.childCount()):
+            child = item.child(child_index)
+            self.select_all_parents_and_children(child)
+
+        # Select all parents recursively
+        parent = item.parent()
+        while parent:
+            parent.setSelected(True)
+            parent = parent.parent()
+
+    def on_tree_item_selected(self):
+        selected_items = self.file_overview_tree.selectedItems()
+        if selected_items:
+            selected_item = selected_items[0]
+
+            # Select the selected item, its children, and its parents
+            self.select_all_parents_and_children(selected_item)
+
+            selected_item_text = selected_item.text(0)
 
 
 
