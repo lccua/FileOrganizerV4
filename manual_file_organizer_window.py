@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel
 import sys
 
 # local imports
+import utils
 from utils import open_and_select_folder, toggle_select_all, delete_selected_folder, organize_chosen_files, save_selected_folders, save_checked_items, load_checked_items, load_selected_folders, categorize_files
 
 class ManualFileOrganizerWindow(QWidget):
@@ -15,7 +16,7 @@ class ManualFileOrganizerWindow(QWidget):
 
     def init_ui(self):
 
-
+        utils.is_automated = False
 
         # Set the window title
         self.setWindowTitle('First Window')
