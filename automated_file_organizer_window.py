@@ -7,7 +7,7 @@ import sys
 
 # local imports
 import utils
-from utils import open_and_select_folder, toggle_select_all, delete_selected_folder, remove_items_from_nested_dict, select_item_in_tree, categorized_files, exclude_files, include_files
+from utils import open_and_select_folder, toggle_select_all, delete_selected_folder, remove_items_from_nested_dict, select_item_in_tree, categorized_files, include_exclude_files
 
 
 class AutomatedFileOrganizerWindow(QWidget):
@@ -87,7 +87,8 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.include_item_button.setObjectName("include_item_button")
         self.include_item_button.setText("Include Item")
 
-        self.include_item_button.clicked.connect(lambda: include_files(self.file_overview_tree, self.excluded_items_tree))
+        self.include_item_button.clicked.connect(lambda: include_exclude_files(self.file_overview_tree, self.excluded_items_tree, include=True)
+)
 
 
         self.excluded_items_button_layout.addWidget(self.include_item_button)
@@ -119,7 +120,8 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.exclude_item_button.setObjectName("exclude_item_button")
         self.exclude_item_button.setText("Exclude Item(s)")
 
-        self.exclude_item_button.clicked.connect(lambda: exclude_files(self.file_overview_tree, self.excluded_items_tree))
+        self.exclude_item_button.clicked.connect(lambda: include_exclude_files(self.file_overview_tree, self.excluded_items_tree, include=False)
+)
 
         self.file_overview_button_layout.addWidget(self.exclude_item_button)
 
@@ -292,34 +294,56 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.checkBox_7.setText("Checkbox 7")
         self.days_checkboxes_layout.addWidget(self.checkBox_7)
 
-        #self.file_overview_tree.itemSelectionChanged.connect(self.on_tree_item_selected)
 
-'''
-    def select_all_parents_and_children(self, item):
-        # Select the item itself
-        item.setSelected(True)
+        self.file_overview_tree.itemSelectionChanged.connect(self.on_tree_item_selected)
+
+        self.excluded_items_tree.itemSelectionChanged.connect(self.on_tree_item_selected)
+
+
+
+    def select_children(self, selected_item):
+
 
         # Select all children recursively
-        for child_index in range(item.childCount()):
-            child = item.child(child_index)
-            self.select_all_parents_and_children(child)
+        for child_index in range(selected_item.childCount()):
+            child = selected_item.child(child_index)
+            child.setSelected(True)
+            child_text = child.text(0)
+            self.select_children(child)
 
+
+
+    def on_tree_item_selected(self):
+
+        if self.file_overview_tree.hasFocus():
+            selected_items = self.file_overview_tree.selectedItems()
+        else:
+            selected_items = self.excluded_items_tree.selectedItems()
+
+
+        if selected_items:
+
+            selected_item = selected_items[0]
+
+
+            selected_item_text = selected_item.text(0)
+
+            self.select_children(selected_item)
+            self.select_parents(selected_item)
+
+
+    def select_parents(self, selected_item):
         # Select all parents recursively
-        parent = item.parent()
+        parent = selected_item.parent()
+
         while parent:
+            parent_text = parent.text(0)
             parent.setSelected(True)
             parent = parent.parent()
 
-    def on_tree_item_selected(self):
-        selected_items = self.file_overview_tree.selectedItems()
-        if selected_items:
-            selected_item = selected_items[0]
 
-            # Select the selected item, its children, and its parents
-            self.select_all_parents_and_children(selected_item)
 
-            selected_item_text = selected_item.text(0)
-'''
+
 
 
 

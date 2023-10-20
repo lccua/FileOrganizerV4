@@ -9,6 +9,7 @@ import json
 import shutil
 
 
+
 file_categories = {
         'Documents': ['.doc', '.docx', '.pdf', '.odt', '.txt', '.rtf', '.ppt', '.pptx', '.xls', '.xlsx', '.csv',
                       '.ods', '.md', '.epub', '.mobi', '.azw', '.lit', '.ibooks', '.cbr', '.cbz'],
@@ -457,228 +458,129 @@ def get_selected_item(treeWidget):
         return None
 
 
-def exclude_files(treeWidgetFileOverview, treeWidgetExcludedItems):
+def include_exclude_files(treeWidgetOverview, treeWidgetExcluded, include=True):
+    global categorized_files, excluded_files
 
+    if include:
+        source_dict = excluded_files
+        destination_dict = categorized_files
+        selected_item = treeWidgetExcluded.selectedItems()[0]
 
+    else:
+        source_dict = categorized_files
+        destination_dict = excluded_files
+        selected_item = treeWidgetOverview.selectedItems()[0]
 
-        global excluded_files
+    selected_item_depth = get_item_depth(selected_item)
 
+    if selected_item_depth == 0:
+        folder = selected_item.text(0)
+        destination_dict[folder] = source_dict.pop(folder)
 
+    if selected_item_depth == 1:  # category
+        category = selected_item
+        folder = category.parent()
 
-        if categorized_files:  # Check if the dictionary is not empty
-            top_level_parent = get_selected_item(treeWidgetFileOverview)
-            top_level_parent_text = top_level_parent.text(0)
+        category_text = category.text(0)
+        folder_text = folder.text(0)
 
-            selected_item = treeWidgetFileOverview.selectedItems()[0]
-            selected_item_depth = get_item_depth(selected_item)
+        # Ensure the dictionaries are initialized
+        if folder_text not in destination_dict:
+            destination_dict[folder_text] = {}
+        if category_text not in destination_dict[folder_text]:
+            destination_dict[folder_text][category_text] = {}
 
-            if selected_item_depth == 1:  # category
-                category = selected_item
-                folder = category.parent()
+        # Move the category to destination_dict
+        category_to_move = source_dict[folder_text].pop(category_text, {})
 
-                category_text = category.text(0)
-                folder_text = folder.text(0)
-
-                # Ensure the dictionaries are initialized
-                if folder_text not in excluded_files:
-                    excluded_files[folder_text] = {}
-
-                # Move the category to excluded_files
-                category_to_move = categorized_files[folder_text].pop(category_text)
-                excluded_files[folder_text][category_text] = category_to_move
-
-                if not categorized_files[folder_text]:
-                    del categorized_files[folder_text]
-
-
-
-
-            elif selected_item_depth == 2:  # file type
-                file_type = selected_item
-                category = file_type.parent()
-                folder = category.parent()
-
-                file_type_text = file_type.text(0)
-                category_text = category.text(0)
-                folder_text = folder.text(0)
-
-                # Ensure the dictionaries are initialized
-                if folder_text not in excluded_files:
-                    excluded_files[folder_text] = {}
-                if category_text not in excluded_files[folder_text]:
-                    excluded_files[folder_text][category_text] = {}
-
-                # Move the file type to excluded_files
-                file_type_to_move = categorized_files[folder_text][category_text].pop(file_type_text)
-                excluded_files[folder_text][category_text][file_type_text] = file_type_to_move
-
-                if not categorized_files[folder_text][category_text]:
-                    del categorized_files[folder_text][category_text]
-
-                    if not categorized_files[folder_text]:
-                        del categorized_files[folder_text]
-
-            elif selected_item_depth == 3:
-                file = selected_item
-                file_type = file.parent()
-                category = file_type.parent()
-                folder = category.parent()
-
-
-
-                file_text = file_type.text(0)
-                file_type_text = file_type.text(0)
-                category_text = category.text(0)
-                folder_text = folder.text(0)
-
-                # Make sure that the dictionaries are initialized
-                if folder_text not in excluded_files:
-                    excluded_files[folder_text] = {}
-
-                if category_text not in excluded_files[folder_text]:
-                    excluded_files[folder_text][category_text] = {}
-
-                if file_type_text not in excluded_files[folder_text][category_text]:
-                    excluded_files[folder_text][category_text][file_type_text] = []
-
-
-
-                # Pop the item from categorized_files and append it to excluded_files
-                item_to_move = categorized_files[folder_text][category_text][file_type_text].pop()
-                excluded_files[folder_text][category_text][file_type_text].append(item_to_move)
-
-                if not categorized_files[folder_text][category_text][file_type_text]:
-                    del categorized_files[folder_text][category_text][file_type_text]
-
-                    if not categorized_files[folder_text][category_text]:
-                        del categorized_files[folder_text][category_text]
-
-                        if not categorized_files[folder_text]:
-                            del categorized_files[folder_text]
-
-
+        # Extend existing files in the destination dictionary with new files
+        for file_type, new_files in category_to_move.items():
+            if file_type in destination_dict[folder_text][category_text]:
+                destination_dict[folder_text][category_text][file_type].extend(new_files)
             else:
+                destination_dict[folder_text][category_text][file_type] = new_files
 
-                folder = top_level_parent_text
+        if not source_dict[folder_text]:
+            del source_dict[folder_text]
 
-                # Move the parent item to a new dictionary
-                excluded_files = {folder: categorized_files[folder]}
+    elif selected_item_depth == 2:  # file type
+        file_type = selected_item
+        category = file_type.parent()
+        folder = category.parent()
 
-                # Delete the parent item from the original dictionary
-                del categorized_files[folder]
+        file_type_text = file_type.text(0)
+        category_text = category.text(0)
+        folder_text = folder.text(0)
+
+        # Check if the keys exist, and create them if they don't
+        if folder_text not in destination_dict:
+            destination_dict[folder_text] = {}
+        if category_text not in destination_dict[folder_text]:
+            destination_dict[folder_text][category_text] = {}
+        if file_type_text not in destination_dict[folder_text][category_text]:
+            destination_dict[folder_text][category_text][file_type_text] = []
+
+        # Extend existing files in the destination dictionary with new files
+        new_files = source_dict[folder_text][category_text][file_type_text]
+        destination_dict[folder_text][category_text][file_type_text].extend(new_files)
+
+        # Clear the source_dict entries for this file type
+        source_dict[folder_text][category_text][file_type_text] = []
+
+        # Check if source_dict[folder_text][category_text] is empty and delete it if needed
+        if not source_dict[folder_text][category_text][file_type_text]:
+            del source_dict[folder_text][category_text][file_type_text]
+
+        if not source_dict[folder_text][category_text]:
+            del source_dict[folder_text][category_text]
+
+        if not source_dict[folder_text]:
+            del source_dict[folder_text]
 
 
-            treeWidgetFileOverview.clear()
-            populate_tree(treeWidgetFileOverview, categorized_files)
+    elif selected_item_depth == 3:
+        file = selected_item
+        file_type = file.parent()
+        category = file_type.parent()
+        folder = category.parent()
 
-            treeWidgetExcludedItems.clear()
-            populate_tree(treeWidgetExcludedItems, excluded_files)
+        file_text = file.text(0)
+        file_type_text = file_type.text(0)
+        category_text = category.text(0)
+        folder_text = folder.text(0)
 
+        # Make sure that the dictionaries are initialized
+        if folder_text not in destination_dict:
+            destination_dict[folder_text] = {}
 
-def include_files(treeWidgetFileOverview,treeWidgetExcludedItems ):
+        if category_text not in destination_dict[folder_text]:
+            destination_dict[folder_text][category_text] = {}
 
-    global categorized_files
+        if file_type_text not in destination_dict[folder_text][category_text]:
+            destination_dict[folder_text][category_text][file_type_text] = []
 
-    if excluded_files:  # Check if the dictionary is not empty
+        my_list = source_dict[folder_text][category_text][file_type_text]
+        file_index = my_list.index(file_text)
 
-        selected_item = treeWidgetExcludedItems.selectedItems()[0]
-        selected_item_depth = get_item_depth(selected_item)
+        # Pop the item from source_dict and append it to destination_dict
+        item_to_move = source_dict[folder_text][category_text][file_type_text].pop(file_index)
+        destination_dict[folder_text][category_text][file_type_text].append(item_to_move)
 
-        top_level_parent = get_selected_item(treeWidgetExcludedItems)
-        top_level_parent_text = top_level_parent.text(0)
+        if not source_dict[folder_text][category_text][file_type_text]:
+            del source_dict[folder_text][category_text][file_type_text]
 
+        if not source_dict[folder_text][category_text]:
+            del source_dict[folder_text][category_text]
 
-        if selected_item_depth == 1:  # category
-            category = selected_item
-            folder = category.parent()
+        if not source_dict[folder_text]:
+            del source_dict[folder_text]
 
-            category_text = category.text(0)
-            folder_text = folder.text(0)
+    treeWidgetOverview.clear()
+    populate_tree(treeWidgetOverview, categorized_files)
 
-            # Ensure the dictionaries are initialized
-            if folder_text not in categorized_files:
-                categorized_files[folder_text] = {}
+    treeWidgetExcluded.clear()
+    populate_tree(treeWidgetExcluded, excluded_files)
 
-            # Move the category to categorized_files
-            category_to_move = excluded_files[folder_text].pop(category_text)
-            categorized_files[folder_text][category_text] = category_to_move
-
-            if not excluded_files[folder_text]:
-                del excluded_files[folder_text]
-
-        elif selected_item_depth == 2:  # file type
-            file_type = selected_item
-            category = file_type.parent()
-            folder = category.parent()
-
-            file_type_text = file_type.text(0)
-            category_text = category.text(0)
-            folder_text = folder.text(0)
-
-            # Ensure the dictionaries are initialized
-            if folder_text not in categorized_files:
-                categorized_files[folder_text] = {}
-            if category_text not in categorized_files[folder_text]:
-                categorized_files[folder_text][category_text] = {}
-
-            # Move the file type to categorized_files
-            file_type_to_move = excluded_files[folder_text][category_text].pop(file_type_text)
-            categorized_files[folder_text][category_text][file_type_text] = file_type_to_move
-
-            if not excluded_files[folder_text][category_text]:
-                del excluded_files[folder_text][category_text]
-
-                if not excluded_files[folder_text]:
-                    del excluded_files[folder_text]
-
-        elif selected_item_depth == 3:
-            file = selected_item
-            file_type = file.parent()
-            category = file_type.parent()
-            folder = category.parent()
-
-            file_text = file_type.text(0)
-            file_type_text = file_type.text(0)
-            category_text = category.text(0)
-            folder_text = folder.text(0)
-
-            # Make sure that the dictionaries are initialized
-            if folder_text not in categorized_files:
-                categorized_files[folder_text] = {}
-
-            if category_text not in categorized_files[folder_text]:
-                categorized_files[folder_text][category_text] = {}
-
-            if file_type_text not in categorized_files[folder_text][category_text]:
-                categorized_files[folder_text][category_text][file_type_text] = []
-
-            # Pop the item from excluded_files and append it to categorized_files
-            item_to_move = excluded_files[folder_text][category_text][file_type_text].pop()
-            categorized_files[folder_text][category_text][file_type_text].append(item_to_move)
-
-            if not excluded_files[folder_text][category_text][file_type_text]:
-                del excluded_files[folder_text][category_text][file_type_text]
-
-                if not excluded_files[folder_text][category_text]:
-                    del excluded_files[folder_text][category_text]
-
-                    if not excluded_files[folder_text]:
-                        del excluded_files[folder_text]
-
-        else:
-            folder = top_level_parent_text
-
-            # Move the parent item to a new dictionary
-            categorized_files = {folder: excluded_files[folder]}
-
-            # Delete the parent item from the original dictionary
-            del excluded_files[folder]
-
-        treeWidgetFileOverview.clear()
-        populate_tree(treeWidgetFileOverview, categorized_files)
-
-        treeWidgetExcludedItems.clear()
-        populate_tree(treeWidgetExcludedItems, excluded_files)
 
 
 
