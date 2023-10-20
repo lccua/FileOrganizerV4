@@ -247,6 +247,9 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.remove_duplicates_checkbox.setObjectName("remove_duplicates_checkbox")
         self.remove_duplicates_checkbox.setText("Remove Duplicates")
 
+        self.days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        self.selected_days = []  # Initialize an empty list to store selected days
+
         # Create a container for the checkboxes related to days of the week
         self.days_checkboxes_container = QtWidgets.QWidget(self)
         self.days_checkboxes_container.setGeometry(QtCore.QRect(10, 140, 1201, 22))
@@ -258,41 +261,20 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.days_checkboxes_layout.setSpacing(0)
         self.days_checkboxes_layout.setObjectName("days_checkboxes_layout")
 
-        # Create checkboxes for each day of the week
-        self.checkBox_5 = QtWidgets.QCheckBox(self.days_checkboxes_container)
-        self.checkBox_5.setObjectName("checkBox_5")
-        self.checkBox_5.setText("Checkbox 5")
-        self.days_checkboxes_layout.addWidget(self.checkBox_5)
+        # Create checkboxes for each day of the week and connect them to a slot
+        self.day_checkboxes_list = []
 
-        self.checkBox = QtWidgets.QCheckBox(self.days_checkboxes_container)
-        self.checkBox.setObjectName("checkBox")
-        self.checkBox.setText("Checkbox 1")
-        self.days_checkboxes_layout.addWidget(self.checkBox)
+        for day in self.days:
+            checkbox = QtWidgets.QCheckBox(self.days_checkboxes_container)
+            checkbox.setObjectName(day)
+            checkbox.setText(day)
+            checkbox.stateChanged.connect(self.checkbox_state_changed)
+            self.days_checkboxes_layout.addWidget(checkbox)
+            self.day_checkboxes_list.append(checkbox)
 
-        self.checkBox_4 = QtWidgets.QCheckBox(self.days_checkboxes_container)
-        self.checkBox_4.setObjectName("checkBox_4")
-        self.checkBox_4.setText("Checkbox 4")
-        self.days_checkboxes_layout.addWidget(self.checkBox_4)
 
-        self.checkBox_2 = QtWidgets.QCheckBox(self.days_checkboxes_container)
-        self.checkBox_2.setObjectName("checkBox_2")
-        self.checkBox_2.setText("Checkbox 2")
-        self.days_checkboxes_layout.addWidget(self.checkBox_2)
 
-        self.checkBox_6 = QtWidgets.QCheckBox(self.days_checkboxes_container)
-        self.checkBox_6.setObjectName("checkBox_6")
-        self.checkBox_6.setText("Checkbox 6")
-        self.days_checkboxes_layout.addWidget(self.checkBox_6)
 
-        self.checkBox_3 = QtWidgets.QCheckBox(self.days_checkboxes_container)
-        self.checkBox_3.setObjectName("checkBox_3")
-        self.checkBox_3.setText("Checkbox 3")
-        self.days_checkboxes_layout.addWidget(self.checkBox_3)
-
-        self.checkBox_7 = QtWidgets.QCheckBox(self.days_checkboxes_container)
-        self.checkBox_7.setObjectName("checkBox_7")
-        self.checkBox_7.setText("Checkbox 7")
-        self.days_checkboxes_layout.addWidget(self.checkBox_7)
 
 
         self.file_overview_tree.itemSelectionChanged.connect(self.on_tree_item_selected)
@@ -340,6 +322,16 @@ class AutomatedFileOrganizerWindow(QWidget):
             parent_text = parent.text(0)
             parent.setSelected(True)
             parent = parent.parent()
+
+
+    def checkbox_state_changed(self, state):
+        sender = self.sender()  # Get the sender of the signal
+        if state == QtCore.Qt.Checked:
+            self.selected_days.append(sender.objectName())
+        elif sender.objectName() in self.selected_days:
+            self.selected_days.remove(sender.objectName())
+        print(self.selected_days)
+
 
 
 

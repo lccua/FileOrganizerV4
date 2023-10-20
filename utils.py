@@ -39,6 +39,7 @@ excluded_files = {}
 checkboxes = {}
 
 selected_folder_paths = []
+
 selected_days = []
 
 is_automated = None
@@ -580,6 +581,9 @@ def include_exclude_files(treeWidgetOverview, treeWidgetExcluded, include=True):
 
     treeWidgetExcluded.clear()
     populate_tree(treeWidgetExcluded, excluded_files)
+
+
+
 
 
 
