@@ -1,13 +1,15 @@
 # third party imports
 from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QMessageBox
 
 # system imports
 import sys
 
 # local imports
 import utils
-from utils import open_and_select_folder, toggle_select_all, delete_selected_folder, remove_items_from_nested_dict, select_item_in_tree, categorized_files, include_exclude_files
+from utils import open_and_select_folder, toggle_select_all, delete_selected_folder, remove_items_from_nested_dict, select_item_in_tree,\
+    categorized_files, include_exclude_files, days, check_current_day, day_checkboxes_dict, load_selected_days, save_selected_days, save_toggle_state, \
+    load_toggle_state, save_selected_folders, load_selected_folders, selected_folder_paths_automated, save_excluded_included_items, load_excluded_included_items, load_exclusion_status, save_exclusion_status
 
 
 class AutomatedFileOrganizerWindow(QWidget):
@@ -17,18 +19,51 @@ class AutomatedFileOrganizerWindow(QWidget):
 
     def init_ui(self):
 
+        load_exclusion_status()
         utils.is_automated = True
 
-        # Set the window title
-        self.setWindowTitle('First Window')
 
-        # Set the fixed size of the window
-        self.setFixedSize(1221, 845)
+
+
+        self.selected_days = []
+
+        # Create a container for the checkboxes related to days of the week
+        self.days_checkboxes_container = QtWidgets.QWidget(self)
+        self.days_checkboxes_container.setGeometry(QtCore.QRect(10, 140, 1201, 22))
+        self.days_checkboxes_container.setObjectName("layoutWidget")
+
+        # Create a layout for the days of the week checkboxes
+        self.days_checkboxes_layout = QtWidgets.QHBoxLayout(self.days_checkboxes_container)
+        self.days_checkboxes_layout.setContentsMargins(200, 0, 200, 0)
+        self.days_checkboxes_layout.setSpacing(0)
+        self.days_checkboxes_layout.setObjectName("days_checkboxes_layout")
+
+        # Create checkboxes for each day of the week and connect them to a slot
+
+        for day in days:
+            checkbox = QtWidgets.QCheckBox(day, self.days_checkboxes_container)
+            checkbox.setObjectName(day)
+            checkbox.setText(day)
+            checkbox.stateChanged.connect(self.update_selected_days)
+            self.days_checkboxes_layout.addWidget(checkbox)
+
+            # Set the initial state of the checkbox from the loaded data
+            if day in day_checkboxes_dict:
+                checkbox.setChecked(day_checkboxes_dict[day])
+
+            # Store the checkbox in the dictionary
+            day_checkboxes_dict[day] = checkbox
+
+
+
 
         # Create the main container widget
         self.main_container = QtWidgets.QWidget(self)
         self.main_container.setGeometry(QtCore.QRect(10, 310, 1201, 351))
         self.main_container.setObjectName("main_container")
+
+
+
 
         # Create a horizontal layout for the main container
         self.main_horizontal_layout = QtWidgets.QHBoxLayout(self.main_container)
@@ -40,6 +75,38 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.main_grid_layout.setHorizontalSpacing(111)
         self.main_grid_layout.setVerticalSpacing(0)
         self.main_grid_layout.setObjectName("main_grid_layout")
+
+        # Create a ListWidget for folder selection
+        self.folder_selector_list = QtWidgets.QListWidget(self.main_container)
+        self.folder_selector_list.setObjectName("folder_selector_list")
+        self.main_grid_layout.addWidget(self.folder_selector_list, 0, 0, 1, 1)
+
+        # Create a TreeWidget for file overview
+        self.file_overview_tree = QtWidgets.QTreeWidget(self.main_container)
+        self.file_overview_tree.setObjectName("file_overview_tree")
+        self.file_overview_tree.setHeaderHidden(True)
+        self.main_grid_layout.addWidget(self.file_overview_tree, 0, 1, 1, 1)
+
+        load_toggle_state()
+        load_selected_days()
+        load_selected_folders(self.folder_selector_list)
+
+        if utils.is_toggled == True:
+            print("automation button works")
+            check_current_day(self.selected_days, self.file_overview_tree)
+        else:
+            print("normale gang van zaken")
+
+
+        # Set the window title
+        self.setWindowTitle('First Window')
+
+        # Set the fixed size of the window
+        self.setFixedSize(1221, 845)
+
+
+
+
 
         # Create a horizontal layout for folder selection buttons
         self.folder_selector_button_layout = QtWidgets.QHBoxLayout()
@@ -59,7 +126,7 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.delete_folder_button = QtWidgets.QPushButton(self.main_container)
         self.delete_folder_button.setObjectName("delete_folder_button")
         self.delete_folder_button.setText("Delete Folder")
-        self.delete_folder_button.clicked.connect(lambda: delete_selected_folder(self.folder_selector_list, self.file_overview_tree))
+        self.delete_folder_button.clicked.connect(lambda: delete_selected_folder(self.folder_selector_list, self.file_overview_tree, selected_folder_paths_automated))
         self.folder_selector_button_layout.addWidget(self.delete_folder_button)
 
         # Add the folder selection button layout to the main grid layout
@@ -71,10 +138,7 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.excluded_items_tree.setHeaderHidden(True)
         self.main_grid_layout.addWidget(self.excluded_items_tree, 0, 2, 1, 1)
 
-        # Create a ListWidget for folder selection
-        self.folder_selector_list = QtWidgets.QListWidget(self.main_container)
-        self.folder_selector_list.setObjectName("folder_selector_list")
-        self.main_grid_layout.addWidget(self.folder_selector_list, 0, 0, 1, 1)
+
 
         # Create a horizontal layout for excluded items buttons
         self.excluded_items_button_layout = QtWidgets.QHBoxLayout()
@@ -87,8 +151,7 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.include_item_button.setObjectName("include_item_button")
         self.include_item_button.setText("Include Item")
 
-        self.include_item_button.clicked.connect(lambda: include_exclude_files(self.file_overview_tree, self.excluded_items_tree, include=True)
-)
+        self.include_item_button.clicked.connect(lambda: include_exclude_files(self.file_overview_tree, self.excluded_items_tree, exclude=False))
 
 
         self.excluded_items_button_layout.addWidget(self.include_item_button)
@@ -96,11 +159,7 @@ class AutomatedFileOrganizerWindow(QWidget):
         # Add the excluded items button layout to the main grid layout
         self.main_grid_layout.addLayout(self.excluded_items_button_layout, 1, 2, 1, 1)
 
-        # Create a TreeWidget for file overview
-        self.file_overview_tree = QtWidgets.QTreeWidget(self.main_container)
-        self.file_overview_tree.setObjectName("file_overview_tree")
-        self.file_overview_tree.setHeaderHidden(True)
-        self.main_grid_layout.addWidget(self.file_overview_tree, 0, 1, 1, 1)
+
 
         # Create a horizontal layout for file overview buttons
         self.file_overview_button_layout = QtWidgets.QHBoxLayout()
@@ -120,8 +179,7 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.exclude_item_button.setObjectName("exclude_item_button")
         self.exclude_item_button.setText("Exclude Item(s)")
 
-        self.exclude_item_button.clicked.connect(lambda: include_exclude_files(self.file_overview_tree, self.excluded_items_tree, include=False)
-)
+        self.exclude_item_button.clicked.connect(lambda: include_exclude_files(self.file_overview_tree, self.excluded_items_tree, exclude=True))
 
         self.file_overview_button_layout.addWidget(self.exclude_item_button)
 
@@ -205,15 +263,21 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.days_label_layout.setObjectName("days_label_layout")
         self.days_label_layout.addWidget(self.days_label)
 
+
         # Create a container for the "Automate" button
         self.automate_button_container = QtWidgets.QWidget(self)
         self.automate_button_container.setGeometry(QtCore.QRect(10, 750, 1201, 31))
         self.automate_button_container.setObjectName("automate_button_container")
 
+
+
+
         # Create the "Automate" button
-        self.automate_button = QtWidgets.QPushButton(self.automate_button_container)
+        self.automate_button = QtWidgets.QPushButton("Automate" if utils.is_toggled else "OFF", self)
+        self.automate_button.setGeometry(QtCore.QRect(10, 750, 1201, 31))
         self.automate_button.setObjectName("automate_button")
-        self.automate_button.setText("Automate")
+        self.automate_button.setCheckable(not utils.is_toggled)
+        self.automate_button.clicked.connect(self.toggle_automation)
 
         # Create a layout for the "Automate" button
         self.automate_button_layout = QtWidgets.QHBoxLayout(self.automate_button_container)
@@ -228,10 +292,12 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.automate_label_container.setObjectName("automate_label_container")
 
         # Create the "Automation Status" label
-        self.automate_label = QtWidgets.QLabel(self.automate_label_container)
-        self.automate_label.setAlignment(QtCore.Qt.AlignCenter)
+        label_text = "Automation is turned ON" if utils.is_toggled else "Automation is turned OFF"
+        self.automate_label = QtWidgets.QLabel(label_text, self)
+        self.automate_label.setGeometry(QtCore.QRect(10, 785, 1201, 31))
         self.automate_label.setObjectName("automate_label")
-        self.automate_label.setText("Automation Status")
+        self.automate_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.automate_label.setStyleSheet("color: green;" if utils.is_toggled else "color: red;")
 
         # Create a layout for the "Automation Status" label
         self.automate_label_layout = QtWidgets.QHBoxLayout(self.automate_label_container)
@@ -247,30 +313,12 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.remove_duplicates_checkbox.setObjectName("remove_duplicates_checkbox")
         self.remove_duplicates_checkbox.setText("Remove Duplicates")
 
-        self.days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        self.selected_days = []  # Initialize an empty list to store selected days
 
-        # Create a container for the checkboxes related to days of the week
-        self.days_checkboxes_container = QtWidgets.QWidget(self)
-        self.days_checkboxes_container.setGeometry(QtCore.QRect(10, 140, 1201, 22))
-        self.days_checkboxes_container.setObjectName("layoutWidget")
 
-        # Create a layout for the days of the week checkboxes
-        self.days_checkboxes_layout = QtWidgets.QHBoxLayout(self.days_checkboxes_container)
-        self.days_checkboxes_layout.setContentsMargins(200, 0, 200, 0)
-        self.days_checkboxes_layout.setSpacing(0)
-        self.days_checkboxes_layout.setObjectName("days_checkboxes_layout")
 
-        # Create checkboxes for each day of the week and connect them to a slot
-        self.day_checkboxes_list = []
 
-        for day in self.days:
-            checkbox = QtWidgets.QCheckBox(self.days_checkboxes_container)
-            checkbox.setObjectName(day)
-            checkbox.setText(day)
-            checkbox.stateChanged.connect(self.checkbox_state_changed)
-            self.days_checkboxes_layout.addWidget(checkbox)
-            self.day_checkboxes_list.append(checkbox)
+        #load_excluded_included_items(self.excluded_items_tree)
+        #load_excluded_included_items(self.file_overview_tree)
 
 
 
@@ -324,30 +372,44 @@ class AutomatedFileOrganizerWindow(QWidget):
             parent = parent.parent()
 
 
-    def checkbox_state_changed(self, state):
-        sender = self.sender()  # Get the sender of the signal
-        if state == QtCore.Qt.Checked:
-            self.selected_days.append(sender.objectName())
-        elif sender.objectName() in self.selected_days:
-            self.selected_days.remove(sender.objectName())
-        print(self.selected_days)
 
 
+    def update_selected_days(self):
+
+        self.selected_days = [day for day, checkbox in day_checkboxes_dict.items() if checkbox.isChecked()]
+
+        if not self.selected_days:
+            utils.is_toggled = True
+            self.toggle_automation()
+
+        print("Selected Days:", self.selected_days)
+
+    def toggle_automation(self):
+
+        if utils.is_toggled == False:
+            if not self.selected_days:
+                QMessageBox.warning(self,"No Days Selected", "Please select at least one day before turning on automation.")
+                return
+
+            self.automate_button.setText("ON")
+            self.automate_label.setText("Automation is turned ON")
+            self.automate_label.setStyleSheet("color: green;")
+            utils.is_toggled = True
+        else:
+            self.automate_button.setText("OFF")
+            self.automate_label.setText("Automation is turned OFF")
+            self.automate_label.setStyleSheet("color: red;")
+            utils.is_toggled = False
+
+        # Save the toggle state when it changes
 
 
-
-
-
-
-
-
-
-def main():
-    app = QtWidgets.QApplication(sys.argv)
-    window = AutomatedFileOrganizerWindow()
-    window.show()
-    sys.exit(app.exec_())
-
-
-if __name__ == "__main__":
-    main()
+    def closeEvent(self, event):
+        # This method is called when the window is closed
+        #save_selected_folders()
+        #save_excluded_included_items(self.excluded_items_tree)
+        #save_excluded_included_items(self.file_overview_tree)
+        #save_selected_days()
+        #save_toggle_state()
+        save_exclusion_status()
+        event.accept()

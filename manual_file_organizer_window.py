@@ -18,6 +18,8 @@ class ManualFileOrganizerWindow(QWidget):
 
         utils.is_automated = False
 
+
+
         # Set the window title
         self.setWindowTitle('First Window')
 
