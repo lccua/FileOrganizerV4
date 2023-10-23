@@ -1,6 +1,7 @@
 # third party imports
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
 # system imports
@@ -154,14 +155,19 @@ def populate_tree(treeWidget, categorized_files_dictionary, parent=None):
     # Loop through keys and values in the categorized_files_dictionary
     for category_or_extension_name, values in categorized_files_dictionary.items(): # category_or_extension_name is a key
 
+
         # If there's no parent item (top-level item):
         if parent is None:
+
 
             # Create a new top-level item in the tree_view
             tree_view_item = QtWidgets.QTreeWidgetItem(treeWidget)
 
             # Set the text of the item to the current key
             tree_view_item.setText(0, category_or_extension_name) # if a tree_view_item is changed it jumps to function on_treeview_item_check_change
+            # Set the icon for the item
+            icon = QIcon("true_icon.png")
+            tree_view_item.setIcon(0, icon)
 
         else:
             # Create a new child item under the parent item
@@ -170,6 +176,11 @@ def populate_tree(treeWidget, categorized_files_dictionary, parent=None):
             # Set the text of the item to the current key
             # '0' sets the item to the first and only column in the treeview
             tree_view_item.setText(0, category_or_extension_name)
+            # Set the icon for the item
+            icon = QIcon("false_icon.png")
+            tree_view_item.setIcon(0, icon)
+
+
 
         if is_automated == False:
             # Adds a ItemIsTristate (checked, unchecked, partially checked item aka checkbox)
@@ -392,14 +403,16 @@ def include_exclude_files(treeWidgetOverview, treeWidgetExcluded, exclude=True):
         # Get the number of child items (categories) under the selected folder
         num_categories = selected_item.childCount()
 
-        destination_dict[folder] = {}  # Initialize the folder in the destination_dict
+        if folder not in destination_dict:
+            destination_dict[folder] = {}  # Initialize the folder in the destination_dict
 
         for category_index in range(num_categories):
             category = selected_item.child(category_index)
             category_text = category.text(0)
 
             # Initialize the category in the destination_dict if it doesn't exist
-            destination_dict[folder][category_text] = {}
+            if category_text not in destination_dict[folder]:
+                destination_dict[folder][category_text] = {}
 
             # Get the number of child items (file types) under the selected category
             num_file_types = category.childCount()
@@ -408,8 +421,8 @@ def include_exclude_files(treeWidgetOverview, treeWidgetExcluded, exclude=True):
                 file_type = category.child(file_type_index)
                 file_type_text = file_type.text(0)
 
-                # Initialize the file type in the destination_dict if it doesn't exist
-                destination_dict[folder][category_text][file_type_text] = []
+                if file_type_text not in destination_dict[folder][category_text]:
+                    destination_dict[folder][category_text][file_type_text] = []
 
                 item_list_to_move = source_dict[folder][category_text][file_type_text]
 
@@ -608,22 +621,63 @@ def confirm_files(treeWidget):
 
         if msg.clickedButton() == organize_future_button:
             if selected_item_depth == 0:
+                keys_to_delete = []
+
+                for item_key in exclusion_status:
+                    item_parts = item_key.split('|')
+                    if item_parts[0] == selected_item_text:
+                        keys_to_delete.append(item_key)
+
+                for key in keys_to_delete:
+                    del exclusion_status[key]
+
                 exclusion_status[selected_item_text] = true_or_false
 
+
+
             elif selected_item_depth == 1:
-                # Handle excluding category items
                 folder = selected_item.parent().text(0)
                 category = selected_item_text
+                keys_to_delete = []
+
+                for item_key in exclusion_status:
+                    item_parts = item_key.split('|')
+                    first_item = item_parts[0]
+
+                    if first_item == folder:
+                        keys_to_delete.append(item_key)
+
+
+                for key in keys_to_delete:
+                    del exclusion_status[key]
+
                 item_key = f"{folder}|{category}"
                 exclusion_status[item_key] = true_or_false
 
+
+
             elif selected_item_depth == 2:
-                # Handle excluding file type items
                 folder = selected_item.parent().parent().text(0)
                 category = selected_item.parent().text(0)
                 file_type = selected_item_text
+                keys_to_delete = []
+
+                for item_key in exclusion_status:
+                    item_parts = item_key.split('|')
+
+                    first_item = item_parts[0]
+
+
+                    if first_item == folder:
+                        keys_to_delete.append(item_key)
+
+                for key in keys_to_delete:
+                    del exclusion_status[key]
+
                 item_key = f"{folder}|{category}|{file_type}"
+
                 exclusion_status[item_key] = true_or_false
+
 
         elif msg.clickedButton() == exclude_permanently_button:
             if selected_item_depth == 0:
