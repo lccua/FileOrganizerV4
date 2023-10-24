@@ -384,7 +384,12 @@ def include_exclude_files(treeWidgetOverview, treeWidgetExcluded, exclude=True):
     global categorized_files, excluded_files
 
     if exclude:
-        confirm_files(treeWidgetOverview)
+        try:
+            confirm_files(treeWidgetOverview)
+        except CancelledByUserException:
+            return
+
+
         source_dict = categorized_files
         destination_dict = excluded_files
         selected_item = treeWidgetOverview.selectedItems()[0]
@@ -595,26 +600,36 @@ def confirm_files(treeWidget):
 
     if selected_item_depth in [2, 1, 0]:
         if treeWidget.objectName() == "file_overview_tree":
-            text = "Exclude"
+            text = "EXCLUDE"
             window_title = "Exclusion"
             true_or_false = True
 
         else:
-            text = "Include"
+            text = "INCLUDE"
             window_title = "Inclusion"
             true_or_false = False
+
+
+        if selected_item_depth == 1:
+            text_2 = "category"
+        elif selected_item_depth == 2:
+            text_2 = "file type"
+        else:
+            text_2 = "folder"
 
 
 
         # Create a confirmation dialog
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Question)
-        msg.setText(f"Do you want to {text} all future '{selected_item_text}' files. Or only the current selected '{selected_item_text}' files." )
+        msg.setText(
+            f"You have selected {text_2} <b>'{selected_item_text}'</b>.<br><br>Do you want to <b>{text}</b> all current and future <b>'{selected_item_text}'</b> files? Or only the currently selected <b>'{selected_item_text}'</b> files.")
+
         msg.setWindowTitle(f"File {window_title} Options")
 
         # Add buttons for different options
-        organize_future_button = msg.addButton(f"{text} All Future '{selected_item_text}' Files", QMessageBox.ActionRole)
-        exclude_permanently_button = msg.addButton(f"{text} Only Current '{selected_item_text}' Files", QMessageBox.ActionRole)
+        organize_future_button = msg.addButton(f"Current and Future", QMessageBox.ActionRole)
+        exclude_permanently_button = msg.addButton(f"Only Current", QMessageBox.ActionRole)
         cancel_button = msg.addButton("Cancel", QMessageBox.RejectRole)
 
         msg.exec()
@@ -703,7 +718,7 @@ def confirm_files(treeWidget):
 
 
         else:
-            # User clicked Cancel or closed the dialog, handle it as needed
+            raise CancelledByUserException()
             pass
 
 
@@ -1008,7 +1023,8 @@ def remove_items_from_nested_dict(treeWidgetFileOverview, treeWidgetExcludedItem
     treeWidgetExcludedItems.clear()
     populate_tree(treeWidgetExcludedItems, checked_items)
 
-
+class CancelledByUserException(Exception):
+    pass
 
 
 
