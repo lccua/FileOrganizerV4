@@ -6,10 +6,12 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QMessageBox
 import sys
 
 # local imports
+from browse_window import BrowseWindow
 import utils
-from utils import open_and_select_folder, toggle_select_all, delete_selected_folder, remove_items_from_nested_dict, select_item_in_tree,\
-    categorized_files, include_exclude_files, days, check_current_day, day_checkboxes_dict, load_selected_days, save_selected_days, save_toggle_state, \
-    load_toggle_state, save_selected_folders, load_selected_folders, selected_folder_paths_automated, save_excluded_included_items, load_excluded_included_items, load_exclusion_status, save_exclusion_status
+from utils import open_and_select_folder, toggle_select_all, delete_selected_folder, select_item_in_tree,\
+    categorized_files, days, check_current_day, day_checkboxes_dict, load_selected_days, save_selected_days, save_toggle_state, \
+    load_toggle_state, save_selected_folders, load_selected_folders, selected_folder_paths_automated,\
+    exclude_files, include_files, save_excluded_files, load_excluded_files, load_remove_duplicates_state, save_remove_duplicates_state, get_excluded_tree, get_inlcuded_tree
 
 
 class AutomatedFileOrganizerWindow(QWidget):
@@ -19,7 +21,6 @@ class AutomatedFileOrganizerWindow(QWidget):
 
     def init_ui(self):
 
-        load_exclusion_status()
         utils.is_automated = True
 
 
@@ -86,14 +87,39 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.file_overview_tree.setObjectName("file_overview_tree")
         self.file_overview_tree.setHeaderHidden(True)
         self.main_grid_layout.addWidget(self.file_overview_tree, 0, 1, 1, 1)
+        get_inlcuded_tree(self.file_overview_tree)
+
+        # Create a ListWidget for excluded items
+        self.excluded_items_tree = QtWidgets.QTreeWidget(self.main_container)
+        self.excluded_items_tree.setObjectName("excluded_items_tree")
+        self.excluded_items_tree.setHeaderHidden(True)
+        self.main_grid_layout.addWidget(self.excluded_items_tree, 0, 2, 1, 1)
+        get_excluded_tree(self.excluded_items_tree)
+
+        # Create a checkbox for "Remove Duplicates"
+        self.remove_duplicates_checkbox = QtWidgets.QCheckBox(self)
+        self.remove_duplicates_checkbox.setGeometry(QtCore.QRect(540, 680, 141, 20))
+        self.remove_duplicates_checkbox.setChecked(False)
+        self.remove_duplicates_checkbox.setObjectName("remove_duplicates_checkbox")
+        self.remove_duplicates_checkbox.setText("Remove Duplicates")
+
+        # Load the state of the "Remove Duplicates" checkbox when the application starts
+        remove_duplicates_state = load_remove_duplicates_state()
+        if remove_duplicates_state is not None:
+            self.remove_duplicates_checkbox.setChecked(remove_duplicates_state)
 
         load_toggle_state()
         load_selected_days()
         load_selected_folders(self.folder_selector_list)
+        load_excluded_files(self.file_overview_tree, self.excluded_items_tree)
+
+
+
+
 
         if utils.is_toggled == True:
             print("automation button works")
-            check_current_day(self.selected_days, self.file_overview_tree)
+            check_current_day(self.selected_days, self.remove_duplicates_checkbox, self.file_overview_tree, self.excluded_items_tree)
         else:
             print("normale gang van zaken")
 
@@ -120,23 +146,19 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.add_folder_button.setObjectName("add_folder_button")
         self.add_folder_button.setText("Add Folder")
         self.folder_selector_button_layout.addWidget(self.add_folder_button)
-        self.add_folder_button.clicked.connect(lambda: open_and_select_folder(self.folder_selector_list, self.file_overview_tree))
+        self.add_folder_button.clicked.connect(lambda: open_and_select_folder(self.folder_selector_list, self.file_overview_tree, self.excluded_items_tree))
 
         # Create the "Delete Folder" button
         self.delete_folder_button = QtWidgets.QPushButton(self.main_container)
         self.delete_folder_button.setObjectName("delete_folder_button")
         self.delete_folder_button.setText("Delete Folder")
-        self.delete_folder_button.clicked.connect(lambda: delete_selected_folder(self.folder_selector_list, self.file_overview_tree, selected_folder_paths_automated))
+        self.delete_folder_button.clicked.connect(lambda: delete_selected_folder(self.folder_selector_list, self.file_overview_tree, self.excluded_items_tree))
         self.folder_selector_button_layout.addWidget(self.delete_folder_button)
 
         # Add the folder selection button layout to the main grid layout
         self.main_grid_layout.addLayout(self.folder_selector_button_layout, 1, 0, 1, 1)
 
-        # Create a ListWidget for excluded items
-        self.excluded_items_tree = QtWidgets.QTreeWidget(self.main_container)
-        self.excluded_items_tree.setObjectName("excluded_items_tree")
-        self.excluded_items_tree.setHeaderHidden(True)
-        self.main_grid_layout.addWidget(self.excluded_items_tree, 0, 2, 1, 1)
+
 
 
 
@@ -149,9 +171,10 @@ class AutomatedFileOrganizerWindow(QWidget):
         # Create the "Include Item" button
         self.include_item_button = QtWidgets.QPushButton(self.main_container)
         self.include_item_button.setObjectName("include_item_button")
-        self.include_item_button.setText("Include Item")
+        self.include_item_button.setText("Delete Selected")
+        self.include_item_button.clicked.connect(lambda: include_files(self.file_overview_tree, self.excluded_items_tree))
 
-        self.include_item_button.clicked.connect(lambda: include_exclude_files(self.file_overview_tree, self.excluded_items_tree, exclude=False))
+        self.include_item_button.setToolTip("Click to INCLUDE selected items above")
 
 
         self.excluded_items_button_layout.addWidget(self.include_item_button)
@@ -167,19 +190,23 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.file_overview_button_layout.setSpacing(30)
         self.file_overview_button_layout.setObjectName("file_overview_button_layout")
 
-        # Create the "Select All" button
-        self.select_all_button = QtWidgets.QPushButton(self.main_container)
-        self.select_all_button.setObjectName("select_all_button")
-        self.select_all_button.setText("Select All")
-        self.select_all_button.clicked.connect(lambda: toggle_select_all(self.select_all_button, self.file_overview_tree))
-        self.file_overview_button_layout.addWidget(self.select_all_button)
+        # Create the "Browse" button
+        self.browse_button = QtWidgets.QPushButton(self.main_container)
+        self.browse_button.setObjectName("browse_button")
+        self.browse_button.setText("Browse")
+        self.browse_button.clicked.connect(self.open_browse_window)
+
+        self.browse_button.setToolTip("Click to browse specific file types or categories, that you want to EXCLUDE")
+
+        self.file_overview_button_layout.addWidget(self.browse_button)
 
         # Create the "Exclude Item" button
         self.exclude_item_button = QtWidgets.QPushButton(self.main_container)
         self.exclude_item_button.setObjectName("exclude_item_button")
-        self.exclude_item_button.setText("Exclude Item(s)")
+        self.exclude_item_button.setText("Exclude Selected")
+        self.exclude_item_button.clicked.connect(lambda: exclude_files(self.file_overview_tree, self.excluded_items_tree))
 
-        self.exclude_item_button.clicked.connect(lambda: include_exclude_files(self.file_overview_tree, self.excluded_items_tree, exclude=True))
+        self.exclude_item_button.setToolTip("Click to EXCLUDE selected items above")
 
         self.file_overview_button_layout.addWidget(self.exclude_item_button)
 
@@ -214,7 +241,7 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.file_overview_label.setFont(font)
         self.file_overview_label.setAlignment(QtCore.Qt.AlignCenter)
         self.file_overview_label.setObjectName("file_overview_label")
-        self.file_overview_label.setText("File Overview")
+        self.file_overview_label.setText("Current Files")
 
         self.folder_selector_label = QtWidgets.QLabel(self)
         self.folder_selector_label.setGeometry(QtCore.QRect(60, 250, 291, 41))
@@ -238,7 +265,7 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.excluded_items_label.setFont(font)
         self.excluded_items_label.setAlignment(QtCore.Qt.AlignCenter)
         self.excluded_items_label.setObjectName("excluded_items_label")
-        self.excluded_items_label.setText("Excluded Items")
+        self.excluded_items_label.setText("Excluded Files")
 
         # Create a container for the days of the week labels
         self.days_label_container = QtWidgets.QWidget(self)
@@ -306,12 +333,7 @@ class AutomatedFileOrganizerWindow(QWidget):
         self.automate_label_layout.setObjectName("automate_label_layout")
         self.automate_label_layout.addWidget(self.automate_label)
 
-        # Create a checkbox for "Remove Duplicates"
-        self.remove_duplicates_checkbox = QtWidgets.QCheckBox(self)
-        self.remove_duplicates_checkbox.setGeometry(QtCore.QRect(540, 680, 141, 20))
-        self.remove_duplicates_checkbox.setChecked(False)
-        self.remove_duplicates_checkbox.setObjectName("remove_duplicates_checkbox")
-        self.remove_duplicates_checkbox.setText("Remove Duplicates")
+
 
         # Create a container for the icon with text
         self.icon_text_container = QtWidgets.QWidget(self)
@@ -343,16 +365,8 @@ class AutomatedFileOrganizerWindow(QWidget):
         # Add the icon with text layout to the main layout
         self.main_horizontal_layout.addLayout(self.icon_text_layout)
 
-        #load_excluded_included_items(self.excluded_items_tree)
-        #load_excluded_included_items(self.file_overview_tree)
-
-
-
-
-
 
         self.file_overview_tree.itemSelectionChanged.connect(self.on_tree_item_selected)
-
         self.excluded_items_tree.itemSelectionChanged.connect(self.on_tree_item_selected)
 
 
@@ -429,13 +443,20 @@ class AutomatedFileOrganizerWindow(QWidget):
 
         # Save the toggle state when it changes
 
+    def open_browse_window(self):
+        self.browse_window = BrowseWindow()
+        self.browse_window.show()
+
 
     def closeEvent(self, event):
         # This method is called when the window is closed
-        #save_selected_folders()
-        #save_excluded_included_items(self.excluded_items_tree)
-        #save_excluded_included_items(self.file_overview_tree)
-        #save_selected_days()
-        #save_toggle_state()
-        save_exclusion_status()
+        save_selected_folders()
+        save_selected_days()
+        save_toggle_state()
+        save_excluded_files()
+
+        # Save the state of the "Remove Duplicates" checkbox
+        remove_duplicates_state = self.remove_duplicates_checkbox.isChecked()
+        save_remove_duplicates_state(remove_duplicates_state)
+
         event.accept()

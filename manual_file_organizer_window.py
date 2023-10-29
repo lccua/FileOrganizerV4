@@ -7,7 +7,8 @@ import sys
 
 # local imports
 import utils
-from utils import open_and_select_folder, toggle_select_all, delete_selected_folder, organize_chosen_files, save_selected_folders, save_checked_items, load_checked_items, load_selected_folders, categorize_files
+from utils import open_and_select_folder, toggle_select_all, delete_selected_folder, organize_chosen_files,\
+                save_selected_folders, save_checked_items, load_checked_items, load_selected_folders, categorize_files, selected_folder_paths_manual
 
 class ManualFileOrganizerWindow(QWidget):
     def __init__(self):
@@ -108,7 +109,7 @@ class ManualFileOrganizerWindow(QWidget):
         self.file_overview_tree.setHeaderHidden(True)
         self.main_grid_layout.addWidget(self.file_overview_tree, 0, 1, 1, 1)
 
-        categorize_files(self.file_overview_tree)
+        categorize_files(self.file_overview_tree, utils.selected_folder_paths_manual)
 
         load_checked_items(self.file_overview_tree)
 
@@ -177,14 +178,14 @@ class ManualFileOrganizerWindow(QWidget):
         self.organize_button = QtWidgets.QPushButton(self.horizontalLayoutWidget_4)
         self.organize_button.setObjectName("organize_button")
         self.organize_button.setText("Organize Files")
-        self.organize_button.clicked.connect(lambda: organize_chosen_files(self.file_overview_tree, self.remove_duplicates_checkbox))
+        self.organize_button.clicked.connect(lambda: organize_chosen_files(self.file_overview_tree , self.remove_duplicates_checkbox, selected_folder_paths_manual))
 
         # Add automate button to the automate button layout
         self.organize_button_layout.addWidget(self.organize_button)
 
         # Create a checkbox for removing duplicates
         self.remove_duplicates_checkbox = QtWidgets.QCheckBox(self)
-        self.remove_duplicates_checkbox.setGeometry(QtCore.QRect(370, 480, 151, 20))
+        self.remove_duplicates_checkbox.setGeometry(QtCore.QRect(363, 480, 151, 20))
         self.remove_duplicates_checkbox.setChecked(False)
         self.remove_duplicates_checkbox.setObjectName("remove_duplicates_checkbox")
         self.remove_duplicates_checkbox.setText("Remove Duplicates")
@@ -192,7 +193,7 @@ class ManualFileOrganizerWindow(QWidget):
     def closeEvent(self, event):
         # This method is called when the window is closed
         save_selected_folders()
-        save_checked_items(self.file_overview_tree)
+        save_checked_items()
         event.accept()
 
 
